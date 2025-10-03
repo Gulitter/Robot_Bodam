@@ -95,6 +95,30 @@ U2D2-RS485 통신, Serial 통신
 **언어**
 C, C++, Python
 
+# SLAM & Navigation
+Odometry(주행기록계) 데이터를 기반으로 로봇 자세 및 위치를 파악한다. SLAM Gmapping을 이용해 집 내부 지도를 작성한다. 작성된 지도는 목적지로 이동하는데 기본적으로 필요한 정보이다. 
+<img width="294" height="205" alt="image" src="https://github.com/user-attachments/assets/5dab2e47-cd93-4db8-ab2e-036be403a77b" />
+성된 지도를 바탕으로 costmap, move_base, DWA planner 패키지를 포함한 launch파일을 구성한다. DWA planner에서는 로봇이 전역지도 상에서 목표지점까지의 경로를 나타내는 global path planner와 지역지도 상에서 목표지점까지의 경로를 나타내는 local path planner로 나누어 계획한다. 또한, local path planner가 global path planner에 얼마나 의존할 것인지, 경로를 어느 주기로 갱신할 것인지에 대한 파라미터를 조정할 수 있다. Costmap은 벽 또는 주변 장애물에 대한 Weight를 나타내는 것으로, 로봇 주행에 큰 영향을 미친다. 장애물의 inflation radius와 scaling factor를 조절하여 로봇이 장애물을 얼마나 우회할 것인지가 결정된다. 마지막으로 move_base에서는 위 모든 정보를 종합하여 제한 속도 내(max_vel: 0.3m/s) 각 구간별 주행할 수 있는 속도를 계산한다. 해당 속도를 컨트롤러에게 전달하여 모터출력을 얻는다.
+<img width="302" height="278" alt="image" src="https://github.com/user-attachments/assets/72b0fafa-e465-4604-8aa1-b296257ec283" />
+<img width="286" height="272" alt="image" src="https://github.com/user-attachments/assets/fa3ceb13-f868-44da-b6e6-9990478ee0c5" />
+
+# 로봇팔 제어
+다이나믹셀 모터를 제어할 수 있는 ROS패키지인 ROS Dynamixel Workbench패키지를 이용하여 5축 로봇팔을 제어한다. 필요한 사물의 위치좌표(x,y,z)를 전송받아서 삼각함수를 통해 모터가 가지고 있어야 되는 각도 값을 로봇의 반경을 바탕으로 나머지 모터들의 각도를 몸통길이, 팔 길이, 손목길이는 고정 값으로 하고, 몸통과 팔 쪽에서 그려지는 삼각형을 계산하여 팔각도를 구하여 모터를 제어한다. 물체를 집고 로봇에 싣기 위한 각 로봇팔의 움직임을 하나의 시퀀스로 만들어서 물건을 싣게 되면 사용자에게 이동한다. 손목의 각도는 물체를 집기 유리하게 만들기 위해 지면과 항상 평행을 이루도록 한다.
+<img width="337" height="235" alt="image" src="https://github.com/user-attachments/assets/4ac987db-ceb5-45c6-bd1f-4140d6b4f9d1" />
+<img width="337" height="120" alt="image" src="https://github.com/user-attachments/assets/104e8598-cbe6-47e7-8e6b-590e028d8950" />
+<img width="325" height="342" alt="image" src="https://github.com/user-attachments/assets/df23cc40-8eed-469d-b73a-0dd9cd4af949" />
+<img width="295" height="195" alt="image" src="https://github.com/user-attachments/assets/472bc731-e30b-4046-a93b-1928bac65654" /><img width="295" height="196" alt="image" src="https://github.com/user-attachments/assets/2938b4a0-0009-4d69-b709-0ea91f9c2aca" />
+
+# 대화 알고리즘
+보담’이라는 말을 인식하기 위해 146번의 녹음을 하였으며, 그 중 50번은 validate samples로 두었다. Hotword가 아닌 단어에 대해서도 359개의 녹음을 진행하였으며, 마찬가지로 144개를 validate samples로 두어 학습을 진행하였다. train samples 와 validate samples 데이터를 5500번의 학습과 확인을 통하여 Hotword 음성모델을 만들었다.
+<img width="307" height="177" alt="image" src="https://github.com/user-attachments/assets/fe70f472-554f-4379-a078-bb7a37a5265a" />
+전달된 음성은 STT를 통해 텍스트로 변환하여 Dialogflow API에 전달하게 된다. Dialogflow API는 대화 목록에 대해서 학습하여 받아들인 텍스트에서 가장 임계값이 높은 intent로 인식하여 반응을 텍스트로 출력하고, 출력된 텍스트는 Google-text-to-speech API를 사용하여 음성파일을 생성해 출력한다.
+
+# 시행착오
+ROS의 로봇팔 패키지를 사용하여 제어하려 했으나 모터와 패키지의 버전 차이로 인해 직접 삼각함수로 계산을 하여 제어하게 되었다. 3개의 관절을 이용해서 거리를 계산을 하면 무수히 많은 로봇팔의 각도가 나와서 어려움을 겪었지만 집게를 지면과 평행을 이루도록 하는 기준을 정함으로써 필요한 각도를 쉽게 구할 수 있었다. 오차 없이 제어하기 위해서 모터 사이의 길이를 고려하여 모터에 의해 만들어지는 팔의 각도와 모터를 고정하는 팔의 각도 사이의 각을 삼각형의 닮음과 삼각함수의 합성을 이용해서 하드웨어적인 오차를 제외하면 소프트웨어적으로 오차 없이 제어할 수 있었다.
+
+# 배운점
+ROS를 사용하면서 Linux 환경에서 프로그래밍 능력을 기를 수 있었다. 또한, 시각장애인을 위한 로봇을 제작할 때 시장조사를 한 결과, 취약 계층을 위한 로봇은 생각보다 많지 않다는 것을 알게 되었다. 자율 주행 및 인공지능 기술을 시각장애인 및 노약자를 위한 로봇에 적용할 수 있다는 점에 프로젝트를 진행하는데 동기부여가 되었고, 그들을 위한 로봇을 만드는 것은 자랑스러운 일이라 생각되었다.
 
 # 기대효과
 1. 가정 내 안전사고 예방
